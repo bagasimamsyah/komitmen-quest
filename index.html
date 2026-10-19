@@ -273,22 +273,6 @@ const VIBE_Q = [
   {q:"Peran favoritmu di tim…", a:[
     ["Tukang ide","penjelajah"],["Penjaga suasana","perekat"],["Pencatat dan penyusun","perancang"],["Penggerak dan penentu","penggerak"]]},
 ];
-const JOHARI = {
-  arena:{name:"Arena (Terbuka)", hint:"Aku tahu · orang lain tahu"},
-  blind:{name:"Blind Spot", hint:"Aku tidak tahu · orang lain tahu"},
-  hidden:{name:"Tersembunyi", hint:"Aku tahu · orang lain tidak tahu"},
-  unknown:{name:"Belum Diketahui", hint:"Aku tidak tahu · orang lain tidak tahu"},
-};
-const JOHARI_ITEMS = [
-  ["Kamu tahu kamu jago presentasi, dan teman sekelas juga melihatnya.","arena"],
-  ["Teman bilang kamu sering memotong pembicaraan. Kamu sendiri tidak sadar.","blind"],
-  ["Sebenarnya kamu grogi bicara di depan kelas, tapi tidak ada yang tahu.","hidden"],
-  ["Bakat memimpin yang belum pernah muncul karena kamu belum pernah mencoba memimpin.","unknown"],
-  ["Rekan kerja bilang tulisanmu rapi dan gampang dipahami. Kamu kaget mendengarnya.","blind"],
-  ["Kamu diam-diam khawatir tidak bisa mengikuti materi digital.","hidden"],
-  ["Semua orang tahu kamu selalu datang paling awal.","arena"],
-  ["Kemampuan yang baru akan terlihat kalau kamu mencoba tugas yang belum pernah kamu kerjakan.","unknown"],
-];
 const FLAGS = [
   ["Bilang \"aku belum paham\" tanpa malu-malu",true,"Mengakui belum paham adalah langkah pertama belajar, dan membantu teman lain yang juga bingung."],
   ["Mengerjakan kerjaan kantor diam-diam saat sesi",false,"Fokus terbelah. Sepakati pendelegasian tugas dengan atasan supaya bisa hadir penuh."],
@@ -296,7 +280,7 @@ const FLAGS = [
   ["Menilai teman dari asal instansinya",false,"Prasangka menutup kesempatan mengenal orang lain dan belajar dari pengalamannya."],
   ["Menepati kesepakatan kelas yang dibuat bersama",true,"Komitmen terlihat dari tindakan, bukan dari tanda tangan di hari pertama."],
   ["Diam saat tidak setuju, lalu mengeluh di grup lain",false,"Perbedaan pendapat sebaiknya disampaikan langsung dengan sopan, bukan di belakang."],
-  ["Meminta dan menerima umpan balik dengan terbuka",true,"Umpan balik memperluas Arena di Jendela Johari dan mempercepat belajar."],
+  ["Meminta dan menerima umpan balik dengan terbuka",true,"Umpan balik membantu kita melihat sisi diri yang belum kita sadari, sehingga belajar jadi lebih cepat."],
   ["Menganggap kontrak belajar cuma formalitas",false,"Kontrak belajar adalah pegangan bersama selama pelatihan dan perlu dijaga sampai akhir."],
   ["Membagi tugas kelompok sesuai kekuatan masing-masing",true,"Mengenal diri dan orang lain membantu tim menempatkan orang di peran yang tepat."],
   ["Kamera off dan menghilang saat diskusi kelompok",false,"Kehadiran aktif adalah bentuk paling dasar dari komitmen kepada tim."],
@@ -327,24 +311,29 @@ const NORMS = ["Hadir tepat waktu","Kamera on saat diskusi","HP mode senyap saat
   "Tugas selesai sebelum tenggat","Saling bantu teman yang kesulitan","Jujur dalam mengerjakan tugas","Fokus, tanpa nyambi kerjaan kantor","Berani memberi dan menerima umpan balik"];
 const LEVELS = [
   {key:"vibe", title:"Vibe Check", sub:"Mengenal Diri Sendiri", color:"var(--lime)", mp:1},
-  {key:"johari", title:"Jendela Johari", sub:"Mengenal Diri & Orang Lain", color:"var(--sky)", mp:1},
   {key:"flags", title:"Green Flag / Red Flag", sub:"Sikap di Kelas", color:"var(--coral)", mp:2},
   {key:"tuck", title:"Tuckman Glow-Up", sub:"Tahap Terbentuknya Tim", color:"var(--lilac)", mp:2},
   {key:"myth", title:"Mitos atau Fakta?", sub:"Konsep Komitmen Belajar", color:"var(--sun)", mp:2},
   {key:"commit", title:"Kartu Komitmen", sub:"Kontrak Belajarku", color:"var(--lime)", mp:2},
 ];
 const BADGES = [
-  ["vibe","Self-Aware","🪞"],["johari","Open Window","🪟"],["flags","Flag Detector","🚩"],
+  ["vibe","Self-Aware","🪞"],["flags","Flag Detector","🚩"],
   ["tuck","Team Builder","🧩"],["myth","Myth Buster","💥"],["commit","Committed!","🤝"],["combo","Combo x5","🔥"],
 ];
-const MAX_XP = 6*10 + 8*15 + 10*10 + (5*10+5*15) + 6*15 + 100; // perkiraan maksimum untuk bar
+const MAX_XP = 6*10 + 10*10 + (5*10+5*15) + 6*15 + 100; // perkiraan maksimum untuk bar
 
 /* ============ STATE ============ */
 const KEY = "komitmen-quest:v1";
 const fresh = () => ({name:"", screen:"home", lvl:-1, step:0, xp:0, combo:0, best:0, scores:{}, badges:[], arch:null, archTally:null,
-  answers:[], tuckOrder:[], norms:[], custom:"", promise:"", sound:true, done:false, room:"", roomTitle:"", sent:false});
+  answers:[], tuckOrder:[], norms:[], custom:"", promise:"", sound:true, done:false, room:"", roomTitle:"", sent:false, v:2});
 let S = fresh();
-try { const raw = localStorage.getItem(KEY); if (raw) S = Object.assign(fresh(), JSON.parse(raw)); } catch(e) {}
+try { const raw = localStorage.getItem(KEY); if (raw) { const o = JSON.parse(raw); S = Object.assign(fresh(), o); if (!o.v) S.v = 0; } } catch(e) {}
+// Migrasi progres dari versi 6 level (dengan Jendela Johari) ke versi 5 level.
+if (!S.v) {
+  if (S.done) S.lvl = 5;
+  else if (S.lvl >= 1) { S.lvl = Math.max(1, S.lvl - 1); S.step = 0; if (["play","levelup"].includes(S.screen)) S.screen = "intro"; }
+  S.v = 2;
+}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {} };
 const $ = (s, r=document) => r.querySelector(s);
 const screen = $("#screen");
@@ -461,7 +450,7 @@ function finishLevel(){
 function render(){
   if (S.screen !== "board") { stopBoard(); document.body.classList.remove("wide"); }
   drawBar();
-  const v = {home, guide, intro, play: () => [playVibe, playJohari, playFlags, playTuck, playMyth, playCommit][S.lvl](), levelup, final, board: boardScreen}[S.screen];
+  const v = {home, guide, intro, play: () => [playVibe, playFlags, playTuck, playMyth, playCommit][S.lvl](), levelup, final, board: boardScreen}[S.screen];
   (v || home)();
 }
 
@@ -474,7 +463,7 @@ function home(){
     <span class="sticker" style="right:40px; top:58px; background:var(--coral); transform:rotate(-6deg)">+XP</span>
     <span class="eyebrow" style="color:var(--lime)">Building Learning Commitment</span>
     <h1>Komitmen<br><em>Quest</em></h1>
-    <p>Kenali dirimu, kenali teman se-tim, lalu kunci komitmen belajarmu. 6 level, sekitar 15 menit, hasil akhirnya Kartu Komitmen buat dipamerkan ke grup kelas.</p>
+    <p>Kenali dirimu, kenali teman se-tim, lalu kunci komitmen belajarmu. 5 level, sekitar 12 menit, hasil akhirnya Kartu Komitmen buat dipamerkan ke grup kelas.</p>
   </section>
   <section class="card stack">
     <h2 style="font-size:1.4rem">Peta misi</h2>
@@ -520,7 +509,6 @@ function homeNote(t){ const e = $("#homeErr"); if (e) e.innerHTML = `<div class=
 
 const INTRO = {
   vibe:["Jawab spontan, nggak ada jawaban salah. Hasilnya karakter belajarmu dan tips kerja bareng orang lain.","Mengenali kekuatan dan cara belajar diri sendiri."],
-  johari:["Jendela Johari membagi diri kita ke 4 kotak. Tempatkan setiap situasi ke kotak yang tepat.","Memahami bahwa kita dikenal lewat keterbukaan diri dan umpan balik orang lain."],
   flags:["Geser kartu ke kanan untuk Green Flag, ke kiri untuk Red Flag. Bisa juga pakai tombol.","Mengenali sikap yang membangun atau merusak komitmen belajar bersama."],
   tuck:["Setiap tim melewati 5 tahap. Susun urutannya, lalu tebak tahap dari kutipan obrolan.","Memahami proses terbentuknya kelompok belajar menurut Tuckman."],
   myth:["6 pernyataan soal komitmen belajar. Pilih: Mitos atau Fakta?","Memahami konsep dasar komitmen, kontrak belajar, norma, dan iklim belajar."],
@@ -576,36 +564,7 @@ function vibeResult(){
   $("#next").onclick = finishLevel;
 }
 
-/* ---- Level 2: Johari ---- */
-function playJohari(){
-  if (S.step >= JOHARI_ITEMS.length) return finishLevel();
-  const [txt, ans] = JOHARI_ITEMS[S.step];
-  screen.innerHTML = `<section class="stack pop">
-    ${dots(JOHARI_ITEMS.length, S.step)}
-    <div class="scenario">${esc(txt)}</div>
-    <p class="muted tiny" style="font-weight:700">Masuk ke kotak yang mana?</p>
-    <div class="jaxis"><span>DIKETAHUI ORANG LAIN ↑</span><span>← AKU TAHU · AKU TIDAK TAHU →</span></div>
-    <div class="jgrid">${["arena","blind","hidden","unknown"].map(k => `<button class="jq" data-k="${k}"><b>${esc(JOHARI[k].name)}</b><small>${esc(JOHARI[k].hint)}</small></button>`).join("")}</div>
-    <div id="fb"></div>
-  </section>`;
-  let locked = false;
-  screen.querySelectorAll(".jq").forEach(b => b.onclick = () => {
-    if (locked) return; locked = true;
-    const ok = b.dataset.k === ans;
-    b.classList.add(ok ? "ok" : "no");
-    if (!ok) { screen.querySelector(`.jq[data-k="${ans}"]`).classList.add("ok"); miss(); }
-    else { S.scores.johari += award(15, b); }
-    const tip = {arena:"Area ini makin luas kalau kita terbuka dan rajin minta umpan balik.",
-      blind:"Hanya bisa kita ketahui lewat umpan balik orang lain. Makanya feedback itu hadiah!",
-      hidden:"Membuka sedikit diri (self-disclosure) membantu teman memahami dan mendukung kita.",
-      unknown:"Potensi yang baru muncul saat kita berani mencoba hal baru bersama tim."}[ans];
-    $("#fb").innerHTML = `<div class="fb ${ok?"good":"bad"} pop"><b>${ok ? "Tepat!" : `Jawabannya: ${esc(JOHARI[ans].name)}.`}</b> ${esc(tip)}</div>
-      <button class="btn block" id="n" style="margin-top:12px">${S.step+1 < JOHARI_ITEMS.length ? "Berikutnya →" : "Selesai level →"}</button>`;
-    $("#n").onclick = () => { S.step++; save(); playJohari(); };
-  });
-}
-
-/* ---- Level 3: Flags (swipe) ---- */
+/* ---- Level 2: Flags (swipe) ---- */
 function playFlags(){
   if (S.step >= FLAGS.length) return finishLevel();
   const [txt] = FLAGS[S.step]; const nextTxt = FLAGS[S.step+1]?.[0];
@@ -650,7 +609,7 @@ function playFlags(){
   $("#g").onclick = () => decide(true); $("#r").onclick = () => decide(false);
 }
 
-/* ---- Level 4: Tuckman ---- */
+/* ---- Level 3: Tuckman ---- */
 function playTuck(){
   if (S.step === 0) return tuckOrder();
   if (S.step - 1 >= TUCK_Q.length) return finishLevel();
@@ -698,7 +657,7 @@ function tuckOrder(){
   draw();
 }
 
-/* ---- Level 5: Myth or Fact ---- */
+/* ---- Level 4: Myth or Fact ---- */
 function playMyth(){
   if (S.step >= MYTH.length) return finishLevel();
   const [txt, isFact, why] = MYTH[S.step];
@@ -718,7 +677,7 @@ function playMyth(){
   });
 }
 
-/* ---- Level 6: Commitment card ---- */
+/* ---- Level 5: Commitment card ---- */
 function playCommit(){
   screen.innerHTML = `<section class="card stack pop">
     <p class="q">Pilih 3 norma kelas yang paling ingin kamu jaga</p>
@@ -779,9 +738,9 @@ function levelup(){
 
 /* ---- Final + card image ---- */
 function rankTitle(xp){
-  if (xp >= 560) return "Main Character Komitmen";
-  if (xp >= 440) return "Squad Captain";
-  if (xp >= 320) return "Rising Learner";
+  if (xp >= 470) return "Main Character Komitmen";
+  if (xp >= 360) return "Squad Captain";
+  if (xp >= 250) return "Rising Learner";
   return "Pemanasan Dulu";
 }
 async function makeCardImage(){
@@ -834,7 +793,7 @@ async function final(){
   <section class="card stack" style="background:var(--soft)"><h3>Refleksi 1 menit</h3>
     <ul style="margin:0; padding-left:20px; display:grid; gap:6px">
       <li>Karakter belajarmu ${esc(A.name)}. Bagian mana yang paling "kamu banget"?</li>
-      <li>Apa satu hal tentang dirimu yang ingin kamu buka ke tim (keluar dari kotak Tersembunyi)?</li>
+      <li>Apa satu hal tentang dirimu yang ingin kamu ceritakan ke tim agar kerja sama makin lancar?</li>
       <li>Norma mana yang paling sulit dijaga, dan siapa yang bisa mengingatkanmu?</li></ul></section>
   <div class="row"><button class="btn alt" id="home">Beranda</button><button class="btn" id="again">Main ulang</button></div>`;
   confetti(3200);
@@ -889,15 +848,15 @@ function guide(){
     <h3>Alur 40 menit</h3>
     <ol>
       <li><span class="time">5'</span> Bagikan tautan game di chat Zoom. Minta peserta mengisi nama panggilan.</li>
-      <li><span class="time">15'</span> Peserta bermain Level 1–5 secara mandiri. Tayangkan hitung mundur.</li>
+      <li><span class="time">15'</span> Peserta bermain Level 1–4 secara mandiri. Tayangkan hitung mundur.</li>
       <li><span class="time">10'</span> Breakout room 4–5 orang: saling tunjukkan karakter belajar dan jawab, "Bagaimana cara terbaik bekerja dengan saya?"</li>
-      <li><span class="time">5'</span> Level 6: peserta membuat Kartu Komitmen dan mengirim gambarnya ke grup kelas.</li>
+      <li><span class="time">5'</span> Level 5: peserta membuat Kartu Komitmen dan mengirim gambarnya ke grup kelas.</li>
       <li><span class="time">5'</span> Rangkum norma yang paling banyak dipilih sebagai bahan kontrak belajar kelas.</li>
     </ol>
     <h3>Pertanyaan debriefing</h3>
     <ul>
       <li><b>Materi Pokok 1:</b> Apakah komposisi karakter di kelompokmu beragam? Apa untungnya?</li>
-      <li><b>Materi Pokok 1:</b> Kotak Johari mana yang paling ingin kamu perluas selama pelatihan, dan caranya?</li>
+      <li><b>Materi Pokok 1:</b> Umpan balik apa dari teman yang membuatmu lebih mengenal dirimu sendiri?</li>
       <li><b>Materi Pokok 2:</b> Kelas kita sekarang ada di tahap Tuckman yang mana? Apa yang dibutuhkan untuk naik ke Performing?</li>
       <li><b>Materi Pokok 2:</b> Dari norma yang paling banyak dipilih, apa konsekuensi yang adil jika dilanggar?</li>
     </ul>
